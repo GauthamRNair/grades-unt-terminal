@@ -1,0 +1,6 @@
+{
+  "//": "Used only by the static GitHub Pages build (scripts/build-pages.mjs). Ignores the normal build's generated route types in .next/, which reference the API routes that build sets aside.",
+  "extends": "./tsconfig.json",
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.mts"],
+  "exclude": ["node_modules", ".next", "out"]
+}

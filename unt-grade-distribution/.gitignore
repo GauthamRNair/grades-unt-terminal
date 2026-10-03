@@ -41,3 +41,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# GitHub Pages static build (output goes to /out/)
+/.pages-build-stash/
+/.next-pages/

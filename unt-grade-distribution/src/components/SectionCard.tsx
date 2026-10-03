@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import GpaBadge from "./GpaBadge";
-import LazyChart from "./LazyChart";
+import GradeChart from "./GradeChart";
 import { calculateGPA, toChartData } from "@/lib/grades";
 import ShareButton from "./ShareButton";
 import { toInstructorSlug } from "@/lib/encryptedData";
@@ -33,6 +33,7 @@ interface SectionCardProps {
   showCourse?: boolean;
 }
 
+/** A section rendered as a bordered terminal pane with a mini ASCII chart. */
 export default function SectionCard({
   section,
   showCourse = false,
@@ -46,41 +47,26 @@ export default function SectionCard({
   );
 
   return (
-    <div className="min-w-0 rounded-xl border border-jungle-tan-dark/30 bg-jungle-tan-light p-4 shadow-sm transition-shadow hover:shadow-md dark:border-green-900 dark:bg-jungle-canopy/60">
-      <div className="mb-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+    <div className="min-w-0 border border-neutral-800 px-3 pb-2 pt-1 transition-colors hover:border-neutral-600">
+      <div className="mb-1 flex min-w-0 items-baseline justify-between gap-3 text-sm">
+        <div className="min-w-0 truncate">
           {showCourse && (
-            <Link
-              href={`/course/${section.course.prefix}/${section.course.number}`}
-              className="text-sm font-medium text-primary hover:underline dark:text-jungle-leaf"
-            >
+            <Link href={`/course/${section.course.prefix}/${section.course.number}`} className="term-link mr-2">
               {section.course.prefix} {section.course.number}
             </Link>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="max-w-full break-words rounded-full bg-jungle-tan-dark/20 px-2 py-0.5 text-xs font-semibold text-jungle-bark dark:bg-green-950/60 dark:text-green-200">
-              {semester}
-            </span>
-            <span aria-hidden="true" className="text-gray-300 dark:text-gray-600">·</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Section {section.sectionNumber}
-            </span>
-            <span aria-hidden="true" className="text-gray-300 dark:text-gray-600">·</span>
-            <Link
-              href={`/instructor/${instructorSlug}`}
-              className="min-w-0 break-words text-sm font-medium text-gray-900 hover:text-primary dark:text-green-100 dark:hover:text-jungle-leaf"
-            >
-              {section.instructor.lastName}, {section.instructor.firstName}
-            </Link>
-          </div>
+          <span className="text-neutral-500">{semester.toLowerCase()} · sec {section.sectionNumber}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-2 self-end sm:self-start">
-          <ShareButton url={`/instructor/${instructorSlug}`} compact />
-          <GpaBadge gpa={gpa} />
-        </div>
+        <GpaBadge gpa={gpa} />
       </div>
-      <LazyChart data={chartData} height={200} />
-      <div className="mt-2 text-right text-xs text-gray-400 dark:text-gray-500">
+      <div className="mb-2 flex min-w-0 items-baseline justify-between gap-3 text-sm">
+        <Link href={`/instructor/${instructorSlug}`} className="term-link min-w-0 truncate">
+          {section.instructor.lastName}, {section.instructor.firstName}
+        </Link>
+        <ShareButton url={`/instructor/${instructorSlug}`} compact />
+      </div>
+      <GradeChart data={chartData} dense />
+      <div className="mt-1 text-right text-xs text-neutral-600">
         {section.totalEnroll} students
       </div>
     </div>

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build --webpack",
+    "build:pages": "node ./scripts/build-pages.mjs",
     "encrypt": "node ./tools/encrypt-data.js",
     "convert:relational": "node ./tools/convert-relational-to-encrypt-csv.js",
     "pivot:grades": "node ./tools/pivot-grade-sheet.js",

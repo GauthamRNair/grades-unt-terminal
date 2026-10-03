@@ -10,6 +10,33 @@ type SemesterCheckboxGroupProps = {
   label?: string;
 };
 
+function Check({
+  checked,
+  onChange,
+  children,
+  strong = false,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  children: React.ReactNode;
+  strong?: boolean;
+}) {
+  return (
+    <label className="group inline-flex cursor-pointer select-none items-baseline whitespace-pre hover:bg-neutral-200 hover:text-black has-[:focus-visible]:bg-neutral-200 has-[:focus-visible]:text-black">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only" />
+      <span className="text-neutral-600 group-hover:text-black">[</span>
+      <span className={checked ? "text-term-accent-bright group-hover:text-black" : "text-neutral-700 group-hover:text-black"}>
+        {checked ? "x" : " "}
+      </span>
+      <span className="text-neutral-600 group-hover:text-black">] </span>
+      <span className={strong ? "text-neutral-100 group-hover:text-black" : checked ? "text-neutral-300 group-hover:text-black" : "text-neutral-500 group-hover:text-black"}>
+        {children}
+      </span>
+    </label>
+  );
+}
+
+/** `[x] all  [x] Fall 2024  [ ] Spring 2025` checkbox row. */
 export function SemesterCheckboxGroup({
   id,
   labels,
@@ -30,18 +57,16 @@ export function SemesterCheckboxGroup({
   };
 
   return (
-    <fieldset id={id} className="w-full">
-      <legend className="mb-2 text-xs font-medium text-gray-600 dark:text-green-200/70">{label}</legend>
-      <div className="flex flex-wrap gap-2">
-        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-jungle-tan-dark/30 bg-jungle-tan/70 px-3 py-2 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:border-primary/60 dark:border-green-900/60 dark:bg-green-950/20 dark:text-green-100">
-          <input type="checkbox" checked={allSelected} onChange={(event) => onChange(event.target.checked ? "all" : [])} className="h-4 w-4 accent-primary" />
-          All semesters
-        </label>
+    <fieldset id={id} className="min-w-0">
+      <legend className="sr-only">{label}</legend>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <Check checked={allSelected} onChange={(checked) => onChange(checked ? "all" : [])} strong>
+          all
+        </Check>
         {labels.map((semester) => (
-          <label key={semester} className="flex cursor-pointer items-center gap-2 rounded-lg border border-jungle-tan-dark/30 bg-jungle-tan/70 px-3 py-2 text-sm text-gray-700 shadow-sm transition-colors hover:border-primary/60 dark:border-green-900/60 dark:bg-green-950/20 dark:text-green-100">
-            <input type="checkbox" checked={selected.includes(semester)} onChange={() => toggleSemester(semester)} className="h-4 w-4 accent-primary" />
-            {semester}
-          </label>
+          <Check key={semester} checked={selected.includes(semester)} onChange={() => toggleSemester(semester)}>
+            {semester.toLowerCase()}
+          </Check>
         ))}
       </div>
     </fieldset>

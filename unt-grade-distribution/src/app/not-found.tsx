@@ -2,19 +2,13 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4 text-center">
-      <h1 className="text-6xl font-bold text-green-200 dark:text-green-900">
-        404
-      </h1>
-      <p className="mt-4 text-lg text-gray-600 dark:text-green-200/70">
-        Lost in the jungle... page not found 🌴
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <p className="text-neutral-500">
+        <span className="text-term-accent">$</span> cd ./this-page
       </p>
-      <Link
-        href="/"
-        className="mt-6 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
-      >
-        Back to Home
-      </Link>
+      <p className="mt-1 text-red-400">bash: cd: ./this-page: No such file or directory</p>
+      <p className="mt-1 text-neutral-500">exit 404</p>
+      <Link href="/" className="term-btn mt-6">back home</Link>
     </div>
   );
 }

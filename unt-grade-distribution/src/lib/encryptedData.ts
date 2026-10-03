@@ -1,3 +1,5 @@
+import { BASE_PATH } from "./deploy";
+
 export type ManifestEntry = {
   id: string;
   tokens: string[];
@@ -132,7 +134,7 @@ function indexedManifest(manifest: ManifestEntry[]) {
   return index;
 }
 
-export function createManifestLoader(request: ManifestRequest = () => fetch("/encrypted/manifest.json")) {
+export function createManifestLoader(request: ManifestRequest = () => fetch(`${BASE_PATH}/encrypted/manifest.json`)) {
   let manifestPromise: Promise<ManifestEntry[]> | null = null;
 
   return function loadManifest(): Promise<ManifestEntry[]> {
@@ -178,8 +180,8 @@ async function deriveKeyFromPassphrase(passphrase: string, salt: ArrayBuffer, it
 export async function decryptBlob(blobId: string, passphrase?: string) {
   // Fetch blob and meta (meta contains iv and salt)
   const [blobRes, metaRes] = await Promise.all([
-    fetch(`/encrypted/blobs/${blobId}`),
-    fetch(`/encrypted/blobs/${blobId.replace(/\.bin$/, '.meta.json')}`),
+    fetch(`${BASE_PATH}/encrypted/blobs/${blobId}`),
+    fetch(`${BASE_PATH}/encrypted/blobs/${blobId.replace(/\.bin$/, '.meta.json')}`),
   ]);
   if (!blobRes.ok || !metaRes.ok) throw new Error('Failed to fetch blob or metadata');
 
@@ -197,6 +199,15 @@ export async function decryptBlob(blobId: string, passphrase?: string) {
   const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, key, cipherBuffer);
   const text = new TextDecoder().decode(plainBuf);
   return JSON.parse(text);
+}
+
+/** Every distinct instructor in the manifest, as route slugs. Used to pre-render static pages. */
+export function listInstructorSlugs(manifest: ManifestEntry[]) {
+  const slugs = new Set<string>();
+  for (const { instructors } of indexedManifest(manifest)) {
+    for (const instructor of instructors) slugs.add(`${instructor.lastName},${instructor.firstName}`);
+  }
+  return [...slugs];
 }
 
 export function toInstructorSlug(firstName: string, lastName: string) {

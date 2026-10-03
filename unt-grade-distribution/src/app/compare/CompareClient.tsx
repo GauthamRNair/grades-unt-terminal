@@ -1,8 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { aggregateGrades, calculateGPA, toChartData, type ChartDataPoint } from "@/lib/grades";
 import GradeChart from "@/components/GradeChart";
+import GpaBadge from "@/components/GpaBadge";
+import { SEARCH_LOG_ENABLED } from "@/lib/deploy";
+import PromptInput from "@/components/term/PromptInput";
+import { Heading, PageHeader, branch, useSpinner } from "@/components/term/Primitives";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { SearchResult } from "@/lib/types";
 import { fetchManifest, fromInstructorSlug, loadCourseByCode, loadInstructorSections, searchManifest } from "@/lib/encryptedData";
@@ -21,11 +26,6 @@ type CompareData = {
     students: number;
     gpa: number | null;
   };
-};
-
-type CompareClientProps = {
-  initialType?: string;
-  initialA?: string;
 };
 
 function isCourseSuggestion(item: Suggestion): item is CourseSuggestion {
@@ -225,115 +225,85 @@ function ComparePanel({
   onSelect: (item: Suggestion) => void;
   onClear: () => void;
 }) {
+  const [highlight, setHighlight] = useState(-1);
+  const spinner = useSpinner(loadingResults || loadingData);
   const hasQuery = query.trim().length >= 2;
   const open = focused && hasQuery && (loadingResults || results.length > 0 || !!error);
 
+  const label = (item: Suggestion) =>
+    isCourseSuggestion(item) ? `${item.prefix} ${item.number}` : `${item.lastName}, ${item.firstName}`;
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || results.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((h) => (h + 1) % results.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((h) => (h - 1 + results.length) % results.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      onSelect(results[Math.max(highlight, 0)]);
+      setHighlight(-1);
+    }
+  };
+
   return (
-    <section className="rounded-[28px] border border-jungle-tan-dark/30 bg-jungle-tan-light/90 p-5 shadow-[0_20px_60px_rgba(27,94,32,0.08)] backdrop-blur dark:border-green-900/50 dark:bg-jungle-canopy/70 md:p-6">
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-jungle-vine/80 dark:text-green-300/70">{title}</p>
-          <h2 className="mt-1 text-2xl font-bold text-gray-900 dark:text-green-100">
-            Compare {kind === "course" ? "courses" : "professors"}
-          </h2>
-        </div>
-        <button
-          type="button"
-          onClick={onClear}
-          className="rounded-full border border-jungle-tan-dark/30 px-3 py-1.5 text-sm font-semibold text-jungle-bark transition hover:border-primary/40 hover:bg-white/60 hover:text-primary dark:border-green-800/60 dark:text-green-100 dark:hover:bg-green-950/40"
-        >
-          Clear
-        </button>
+    <section className="min-w-0">
+      <Heading right={<button type="button" onClick={onClear} className="term-btn text-sm">clear</button>}>{title}</Heading>
+
+      <div className="mt-3 flex items-baseline gap-[1ch] text-sm" role="radiogroup" aria-label="Compare type">
+        <span className="text-neutral-500">mode:</span>
+        {(["course", "instructor"] as CompareType[]).map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={kind === value}
+            onClick={() => onKindChange(value)}
+            className={kind === value ? "bg-neutral-200 px-[1ch] text-black" : "px-[1ch] text-neutral-500 hover:text-neutral-100"}
+          >
+            {value === "course" ? "courses" : "professors"}
+          </button>
+        ))}
       </div>
 
-      <div className="mb-4">
-        <div className="relative grid h-12 grid-cols-2 rounded-full border border-jungle-tan-dark/30 bg-white/60 p-1 text-sm shadow-sm dark:border-green-800/60 dark:bg-green-950/30">
-          <span
-            className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-primary shadow-md transition-transform duration-300 ease-out dark:bg-green-400 ${
-              kind === "instructor" ? "translate-x-full" : "translate-x-0"
-            }`}
-            aria-hidden="true"
-          />
-          {(["course", "instructor"] as CompareType[]).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onKindChange(value)}
-              className={`relative z-10 flex items-center justify-center rounded-full px-4 font-semibold transition-colors duration-300 ${
-                kind === value
-                  ? "text-white dark:text-jungle-canopy"
-                  : "text-jungle-bark hover:text-primary dark:text-green-100 dark:hover:text-green-50"
-              }`}
-            >
-              {value === "course" ? "Courses" : "Professors"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="relative mb-4">
-        <input
-          type="text"
+      <div className="relative mt-3">
+        <PromptInput
           value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          onFocus={() => onFocusChange(true)}
-          onBlur={() => onFocusChange(false)}
-          placeholder={`Search ${kind === "course" ? "course code or title" : "professor name"}`}
-          className="w-full rounded-2xl border border-jungle-tan-dark/30 bg-white/85 px-4 py-3 pr-11 text-gray-900 shadow-inner outline-none ring-0 transition placeholder:text-gray-500 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:border-green-800/60 dark:bg-jungle-canopy/80 dark:text-green-100 dark:placeholder:text-green-200/40 dark:focus:border-green-400/50 dark:focus:ring-green-500/20"
+          onChange={(value) => {
+            onQueryChange(value);
+            setHighlight(-1);
+          }}
+          onKeyDown={onKeyDown}
+          onFocusChange={onFocusChange}
+          placeholder={`search ${kind === "course" ? "course code or title" : "professor name"}`}
+          ariaLabel={`Search ${kind === "course" ? "courses" : "professors"}`}
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
-          {loadingResults ? (
-            <svg className="h-4 w-4 animate-spin text-jungle-vine dark:text-green-300/70" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          ) : (
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-jungle-vine/70 dark:text-green-300/60">
-              {kind === "course" ? "CRS" : "PROF"}
-            </span>
-          )}
-        </div>
 
         {open && (
-          <div className="absolute z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-jungle-tan-dark/30 bg-[#F8F4EE] shadow-2xl dark:border-green-800/60 dark:bg-jungle-canopy/95">
+          <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto border border-neutral-800 bg-black py-1">
             {error ? (
-              <div className="px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>
+              <p className="px-2 text-red-400">error: {error}</p>
+            ) : loadingResults && results.length === 0 ? (
+              <p className="px-2 text-neutral-500"><span className="text-term-accent">{spinner}</span> searching…</p>
             ) : results.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-gray-500 dark:text-green-200/70">No results found.</div>
+              <p className="px-2 text-neutral-500">  └─ no matches</p>
             ) : (
-              results.map((item) => (
+              results.map((item, i) => (
                 <button
                   key={item.id}
                   type="button"
+                  onMouseEnter={() => setHighlight(i)}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => onSelect(item)}
-                  className="flex w-full items-center gap-3 border-b border-jungle-tan-dark/10 px-4 py-3 text-left transition last:border-b-0 hover:bg-green-50 dark:border-green-900/40 dark:hover:bg-green-950/50"
+                  className="flex w-full items-baseline whitespace-pre px-2 text-left"
                 >
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary dark:bg-green-400/15 dark:text-green-300">
-                    {kind === "course"
-                      ? isCourseSuggestion(item)
-                        ? item.prefix
-                        : "CR"
-                      : isInstructorSuggestion(item)
-                        ? item.lastName.slice(0, 1)
-                        : "PR"}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-semibold text-gray-900 dark:text-green-100">
-                      {kind === "course" && isCourseSuggestion(item)
-                        ? `${item.prefix} ${item.number}`
-                        : kind === "instructor" && isInstructorSuggestion(item)
-                          ? `${item.lastName}, ${item.firstName}`
-                          : "Result"}
-                    </span>
-                    <span className="block truncate text-sm text-gray-500 dark:text-green-200/70">
-                      {kind === "course" && isCourseSuggestion(item)
-                        ? item.title
-                        : kind === "instructor" && isInstructorSuggestion(item)
-                          ? "Professor"
-                          : ""}
-                    </span>
-                  </span>
+                  <span className="shrink-0 text-neutral-700">{branch(i === results.length - 1)}</span>
+                  <span className={`shrink-0 ${highlight === i ? "bg-neutral-200 text-black" : "text-neutral-100"}`}>{label(item)}</span>
+                  {isCourseSuggestion(item) && (
+                    <span className="min-w-0 overflow-hidden text-ellipsis text-neutral-500">{"  "}{item.title}</span>
+                  )}
                 </button>
               ))
             )}
@@ -341,50 +311,21 @@ function ComparePanel({
         )}
       </div>
 
-      <div className="mb-4 min-h-12 rounded-2xl border border-dashed border-jungle-tan-dark/35 bg-white/40 px-4 py-3 dark:border-green-800/60 dark:bg-green-950/20">
-        {selected ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white dark:bg-green-400 dark:text-jungle-canopy">
-              Selected
-            </span>
-            <span className="font-semibold text-gray-900 dark:text-green-100">
-              {selectionLabel(kind, selected, data?.label)}
-            </span>
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500 dark:text-green-200/60">
-            Pick a {kind === "course" ? "course" : "professor"} to load the distribution.
-          </p>
-        )}
-      </div>
-
-      <div className="rounded-3xl border border-jungle-tan-dark/25 bg-[#FBF8F3] p-4 dark:border-green-900/50 dark:bg-jungle-canopy/60">
+      <div className="mt-4 min-h-[300px] min-w-0">
         {loadingData ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-5 w-44 rounded-full bg-jungle-tan-dark/30 dark:bg-green-950/50" />
-            <div className="h-[260px] rounded-2xl bg-jungle-tan-dark/15 dark:bg-green-950/30" />
-          </div>
+          <p className="text-neutral-500"><span className="text-term-accent">{spinner}</span> loading {selectionLabel(kind, selected)}…</p>
         ) : data ? (
           <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-green-100">{data.label}</h3>
-                <p className="text-sm text-gray-500 dark:text-green-200/70">
-                  {data.summary.sections} sections · {data.summary.students.toLocaleString()} students · GPA {data.summary.gpa === null ? "N/A" : data.summary.gpa.toFixed(2)}
-                </p>
-              </div>
-            </div>
-            <GradeChart data={data.chartData} height={280} mode="percentage" />
+            <p className="font-bold text-neutral-100">{data.label}</p>
+            <p className="mb-3 text-sm text-neutral-500">
+              {data.summary.sections} sections · {data.summary.students.toLocaleString()} students · gpa <GpaBadge gpa={data.summary.gpa} />
+            </p>
+            <GradeChart data={data.chartData} mode="percentage" />
           </>
         ) : (
-          <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-jungle-tan-dark/30 bg-white/40 text-center dark:border-green-800/50 dark:bg-green-950/15">
-            <div>
-              <p className="text-lg font-semibold text-gray-800 dark:text-green-100">No comparison loaded</p>
-              <p className="mt-1 text-sm text-gray-500 dark:text-green-200/60">
-                Search and select a {kind === "course" ? "course" : "professor"} above.
-              </p>
-            </div>
-          </div>
+          <p className="text-neutral-600">
+            <span>⎿</span> pick a {kind === "course" ? "course" : "professor"} above to load its distribution
+          </p>
         )}
       </div>
     </section>
@@ -426,7 +367,7 @@ function useCompareSide(initialKind: CompareType, initialSelection: Selection) {
   const onSelect = useCallback((item: Suggestion) => {
     const normalizedQuery = debouncedQuery.trim().toLowerCase().replace(/\s+/g, " ");
     const isCourse = isCourseSuggestion(item);
-    void fetch("/api/search-log", {
+    if (SEARCH_LOG_ENABLED) void fetch("/api/search-log", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -532,7 +473,11 @@ function useCompareSide(initialKind: CompareType, initialSelection: Selection) {
   };
 }
 
-export default function CompareClient({ initialType, initialA }: CompareClientProps) {
+export default function CompareClient() {
+  const searchParams = useSearchParams();
+  const initialType = searchParams.get("type") ?? undefined;
+  const initialA = searchParams.get("a") ?? undefined;
+
   useEffect(() => {
     void fetchManifest().catch(() => undefined);
   }, []);
@@ -545,71 +490,49 @@ export default function CompareClient({ initialType, initialA }: CompareClientPr
   const right = useCompareSide(rightType, null);
 
   return (
-    <main className="relative min-h-[calc(100dvh-4rem-1px)] overflow-hidden px-4 py-8 md:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-0 opacity-60 dark:opacity-80">
-        <div className="absolute left-[-10%] top-[-8%] h-72 w-72 rounded-full bg-green-400/15 blur-3xl" />
-        <div className="absolute right-[-8%] top-[18%] h-80 w-80 rounded-full bg-jungle-gold/10 blur-3xl" />
-        <div className="absolute bottom-[-12%] left-[20%] h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <PageHeader
+        command="grades compare"
+        title="Compare"
+        subtitle="put courses and professors side by side. each side can be either kind."
+      />
+
+      <div className="grid items-start gap-x-12 gap-y-10 lg:grid-cols-2">
+        <ComparePanel
+          title="left"
+          kind={left.kind}
+          onKindChange={left.onKindChange}
+          query={left.query}
+          onQueryChange={left.setQuery}
+          loadingResults={left.loadingResults}
+          results={left.results}
+          focused={left.focused}
+          onFocusChange={left.setFocused}
+          selected={left.selected}
+          data={left.data}
+          loadingData={left.loadingData}
+          error={left.error}
+          onSelect={left.onSelect}
+          onClear={left.clear}
+        />
+        <ComparePanel
+          title="right"
+          kind={right.kind}
+          onKindChange={right.onKindChange}
+          query={right.query}
+          onQueryChange={right.setQuery}
+          loadingResults={right.loadingResults}
+          results={right.results}
+          focused={right.focused}
+          onFocusChange={right.setFocused}
+          selected={right.selected}
+          data={right.data}
+          loadingData={right.loadingData}
+          error={right.error}
+          onSelect={right.onSelect}
+          onClear={right.clear}
+        />
       </div>
-
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-8">
-        <header className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-green-100 sm:text-5xl lg:text-6xl">
-            Compare anything in one place.
-          </h1>
-          <p className="mt-4 max-w-2xl text-base text-gray-600 dark:text-green-200/75 sm:text-lg">
-            Put courses and professors side by side. Switch either panel to what you want to inspect.
-          </p>
-        </header>
-
-        <div className="grid items-start gap-6 lg:grid-cols-[1fr_auto_1fr]">
-          <ComparePanel
-            title="Left side"
-            kind={left.kind}
-            onKindChange={left.onKindChange}
-            query={left.query}
-            onQueryChange={left.setQuery}
-            loadingResults={left.loadingResults}
-            results={left.results}
-            focused={left.focused}
-            onFocusChange={left.setFocused}
-            selected={left.selected}
-            data={left.data}
-            loadingData={left.loadingData}
-            error={left.error}
-            onSelect={left.onSelect}
-            onClear={left.clear}
-          />
-
-          <div className="flex items-center justify-center lg:min-h-full">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-jungle-tan-dark/25 bg-white/80 text-lg font-black text-primary shadow-lg dark:border-green-800/60 dark:bg-jungle-canopy/90 dark:text-green-300">
-              VS
-            </div>
-          </div>
-
-          <ComparePanel
-            title="Right side"
-            kind={right.kind}
-            onKindChange={right.onKindChange}
-            query={right.query}
-            onQueryChange={right.setQuery}
-            loadingResults={right.loadingResults}
-            results={right.results}
-            focused={right.focused}
-            onFocusChange={right.setFocused}
-            selected={right.selected}
-            data={right.data}
-            loadingData={right.loadingData}
-            error={right.error}
-            onSelect={right.onSelect}
-            onClear={right.clear}
-          />
-        </div>
-
-        <div className="mx-auto max-w-4xl rounded-3xl border border-jungle-tan-dark/25 bg-white/70 px-5 py-4 text-sm text-gray-600 shadow-sm backdrop-blur dark:border-green-900/40 dark:bg-jungle-canopy/60 dark:text-green-200/75">
-          Start with a course or professor on either side, then switch panels independently if you want a mixed comparison.
-        </div>
-      </div>
-    </main>
+    </div>
   );
 }

@@ -2,47 +2,37 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import ThemeToggle from "./ThemeToggle";
-import SearchBar from "./SearchBar";
+import TerminalSearch from "./TerminalSearch";
 import BookmarkIcon from "./BookmarkIcon";
 
+const KOFI_URL = "https://ko-fi.com/S6S61VT6MR";
+
+/** One-line terminal status bar. Hidden on the home page, which is just the prompt. */
 export default function Navbar() {
   const pathname = usePathname();
-  const isHome = pathname === "/";
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  if (pathname === "/") return null;
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-jungle-tan-dark/30 bg-jungle-tan/90 backdrop-blur-md transition-colors duration-700 dark:border-green-900/50 dark:bg-black/80">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-5 px-5">
-        <Link
-          href="/"
-          className="shrink-0 select-none text-[34px] font-bold text-primary dark:text-jungle-leaf"
-        >
-          UNT Grades
+    <nav className="sticky top-0 z-50 border-b border-neutral-800 bg-black text-sm">
+      <div className="mx-auto flex h-10 max-w-6xl items-center gap-x-4 px-4 sm:px-6">
+        <Link href="/" className="shrink-0 select-none font-bold text-term-accent hover:text-term-accent-bright">
+          unt-grades
         </Link>
-        {!isHome && (
-          <div className={`hidden max-w-md flex-1 transition-all duration-300 sm:block ${scrolled ? "max-h-0 opacity-0" : "max-h-12 opacity-100"}`}>
-            <SearchBar compact />
-          </div>
-        )}
-        <div className="flex items-center gap-4">
+        <span aria-hidden className="hidden shrink-0 text-neutral-700 sm:inline">│</span>
+        <TerminalSearch variant="inline" placeholder="search  (press /)" className="flex-1" />
+        <div className="flex shrink-0 items-center gap-x-3">
+          <span aria-hidden className="hidden text-neutral-700 sm:inline">│</span>
+          <Link href="/compare" className={`term-link hidden sm:inline ${pathname.startsWith("/compare") ? "text-term-accent" : ""}`}>
+            compare
+          </Link>
+          <span aria-hidden className="hidden text-neutral-700 sm:inline">│</span>
           <BookmarkIcon />
-          <ThemeToggle />
+          <span aria-hidden className="hidden text-neutral-700 md:inline">│</span>
+          <a href={KOFI_URL} target="_blank" rel="noreferrer" className="term-link hidden text-neutral-500 md:inline">
+            ko-fi
+          </a>
         </div>
       </div>
-      {!isHome && (
-        <div className={`border-t border-green-100 px-4 py-2 transition-all duration-300 sm:hidden dark:border-green-900 ${scrolled ? "max-h-0 overflow-hidden border-t-0 py-0 opacity-0" : "max-h-20 opacity-100"}`}>
-          <SearchBar compact />
-        </div>
-      )}
     </nav>
   );
 }
