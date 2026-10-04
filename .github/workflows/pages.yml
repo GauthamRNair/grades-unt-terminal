@@ -1,7 +1,7 @@
 name: Deploy terminal preview to GitHub Pages
 
-# Static preview of the web app. Only runs in the private preview repo, so it
-# is inert if this file ever lands in the main repository.
+# Static export of the web app (terminal edition). Scoped to this repository
+# so it does nothing if the file lands in another one.
 
 on:
   push:
