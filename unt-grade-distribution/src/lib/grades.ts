@@ -82,7 +82,7 @@ export function calculateGPA(data: GradeData): number | null {
 }
 
 /**
- * Convert a section's grade data into Recharts-ready chart data.
+ * Convert a section's grade data into chart data (one row per grade).
  * Each entry: { grade: "A", count: 12, percentage: 34.5 }
  */
 export function toChartData(data: GradeData): ChartDataPoint[] {

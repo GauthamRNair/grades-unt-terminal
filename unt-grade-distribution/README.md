@@ -28,6 +28,16 @@ If the encrypted blobs were generated with a data key, set the matching public k
 NEXT_PUBLIC_DATA_KEY="same-value-used-for-encryption"
 ```
 
+## Static build (terminal edition)
+
+The terminal edition at [terminal.untgrades.app](https://terminal.untgrades.app) is a static export hosted on GitHub Pages:
+
+```bash
+npm run build:pages   # writes the static site to out/
+```
+
+This pre-renders every course and instructor page, turns off search logging, and temporarily sets the API routes and proxy aside. `NEXT_PUBLIC_BASE_PATH` is only needed when serving from a subpath such as `/grades-unt-terminal`. Deployment and custom-domain setup are covered in the root [README](../README.md#deploying-the-terminal-edition).
+
 ## Validation commands
 
 ```bash
