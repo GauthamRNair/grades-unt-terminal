@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Navbar from "@/components/Navbar";
 import Providers from "@/components/Providers";
+import { SITE_URL } from "@/lib/deploy";
 import "./globals.css";
 
 const termFont = JetBrains_Mono({
@@ -12,7 +13,9 @@ const termFont = JetBrains_Mono({
   variable: "--font-term",
 });
 
+// Each page sets its own canonical URL; this only makes them absolute.
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "UNT Grade Distribution",
   description:
     "Explore grade distributions for courses and professors at the University of North Texas.",

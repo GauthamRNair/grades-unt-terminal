@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/term/Primitives";
+
+export const metadata: Metadata = { alternates: { canonical: "/terms/" } };
 
 export default function TermsPage() {
   return (
